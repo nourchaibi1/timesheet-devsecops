@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timesheet-dep
+  namespace: chap4
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: timesheet
+  template:
+    metadata:
+      labels:
+        app: timesheet
+    spec:
+      containers:
+        - name: timesheet
+          image: nourchaibi/timesheet:1.0
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: timesheet-config
+            - secretRef:
+                name: timesheet-secret
