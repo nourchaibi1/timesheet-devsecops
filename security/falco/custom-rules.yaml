@@ -1,0 +1,33 @@
+- macro: timesheet_container
+  condition: container.image.repository contains "nourchaibi/timesheet"
+
+- macro: mysql_container
+  condition: container.image.repository contains "mysql"
+
+- rule: Shell in Timesheet Container
+  desc: Shell spawned inside timesheet container
+  condition: spawned_process and timesheet_container and proc.name in (bash, sh, zsh)
+  output: "Shell in timesheet (user=%user.name proc=%proc.name image=%container.image.repository)"
+  priority: WARNING
+  tags: [container, shell, mitre_execution]
+
+- rule: Shell in MySQL Container
+  desc: Shell spawned inside mysql container
+  condition: spawned_process and mysql_container and proc.name in (bash, sh, zsh)
+  output: "Shell in mysql (user=%user.name proc=%proc.name image=%container.image.repository)"
+  priority: WARNING
+  tags: [container, shell, mitre_execution]
+
+- rule: Sensitive File Access in Timesheet
+  desc: Sensitive file read inside timesheet container
+  condition: open_read and timesheet_container and fd.name in (/etc/shadow, /etc/passwd, /root/.ssh/authorized_keys)
+  output: "Sensitive file read (file=%fd.name proc=%proc.name image=%container.image.repository)"
+  priority: ERROR
+  tags: [container, filesystem, mitre_credential_access]
+
+- rule: Unexpected Outbound from Timesheet
+  desc: Outbound connection from timesheet to unexpected destination
+  condition: outbound and timesheet_container and not fd.rport in (3306, 8200, 53)
+  output: "Unexpected outbound (port=%fd.rport proc=%proc.name image=%container.image.repository)"
+  priority: NOTICE
+  tags: [container, network, mitre_discovery]
