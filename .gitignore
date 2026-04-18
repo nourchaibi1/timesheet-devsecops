@@ -1,10 +1,5 @@
 minikube-linux-amd64
 .env
 target/
-.idea/
-.settings/
 .classpath
 .project
-minikube-linux-amd64
-monitoring/grafana/banking_cves.db
-.env
