@@ -1,0 +1,72 @@
+pipeline {
+    agent any
+    environment {
+        VAULT_ADDR = 'http://127.0.0.1:8200'
+    }
+    stages {
+        stage('GIT') {
+            steps {
+                git branch: 'master',
+                    url: 'https://github.com/nourchaibi1/timesheet-project.git'
+            }
+        }
+        stage('COMPILATION') {
+            steps {
+                sh './mvnw clean package'
+            }
+        }
+        stage('ANALYSIS') {
+            steps {
+                sh 'export VAULT_ADDR=http://127.0.0.1:8200 && export VAULT_TOKEN=root && SONAR_TOKEN=$(vault kv get -field=token secret/sonar) && mvn sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$SONAR_TOKEN'
+            }
+        }
+        stage('OWASP') {
+            steps {
+                sh 'mvn org.owasp:dependency-check-maven:check -DfailOnError=false -Dformat=HTML -DoutputDirectory=target -DautoUpdate=false'
+            }
+        }
+        stage('INSTALLATION') {
+            steps {
+                sh 'docker build -t nourchaibi/timesheet:1.3 .'
+            }
+        }
+        stage('TRIVY') {
+            steps {
+                sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL --timeout 15m nourchaibi/timesheet:1.3'
+            }
+        }
+        stage('PUSH') {
+            steps {
+                sh 'export VAULT_ADDR=http://127.0.0.1:8200 && export VAULT_TOKEN=root && DOCKER_TOKEN=$(vault kv get -field=token secret/docker) && docker login -u nourchaibi -p $DOCKER_TOKEN && docker push nourchaibi/timesheet:1.3'
+            }
+        }
+        stage('DEPLOIEMENT') {
+            steps {
+                sh 'kubectl set image deployment/timesheet-dep timesheet=nourchaibi/timesheet:1.2 -n chap4'
+                sh 'kubectl rollout status deployment/timesheet-dep -n chap4'
+            }
+        }
+        stage('DAST - OWASP ZAP Scan') {
+            steps {
+                script {
+                    sh """
+                        touch zap_report.html
+                        chmod 777 zap_report.html
+                        docker run --rm --network host -u 0 -v \$(pwd):/zap/wrk:rw \
+                        ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+                        -t http://localhost:8090/timesheet-devops/user/retrieve-all-users \
+                        -m 1 -z "-config spider.threadCount=1" -r zap_report.html -I
+                    """
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.',
+                        reportFiles: 'zap_report.html',
+                        reportName: 'ZAP Security Report'
+                    ])
+                }
+            }
+        }
+    }
+}
