@@ -81,3 +81,16 @@ Kyverno enforces security at admission time:
 
 Zero-trust: only `timesheet` → `mysql` communication allowed.
 All other pod-to-pod traffic blocked by Network Policies.
+ ## Monitoring & Observability
+
+Grafana security dashboard with real data from the cluster:
+
+**Runtime Threats (Falco)**
+- Live threat detection rate over time
+- Security alerts table with timestamps, priority, and rule name
+- Rules triggered: Drop and execute new binary, Contact K8S API Server, Terminal shell in container
+
+**Policy & Compliance (Kyverno)**
+- disallow-privileged → 107 pass
+- disallow-root-user → 107 fail (audit mode — MySQL runs as root)
+- require-resource-limits → 101 pass / 6 fail
