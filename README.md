@@ -1,21 +1,83 @@
-# Getting Started
+# Timesheet DevSecOps Pipeline 
 
-### Reference Documentation
-For further reference, please consider the following sections:
+A Spring Boot timesheet app with a full DevSecOps pipeline built
+on a local Kubernetes environment (Minikube).
+## Results
 
-* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
-* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/docs/2.5.4/maven-plugin/reference/html/)
-* [Create an OCI image](https://docs.spring.io/spring-boot/docs/2.5.4/maven-plugin/reference/html/#build-image)
-* [Spring Boot DevTools](https://docs.spring.io/spring-boot/docs/2.5.4/reference/htmlsingle/#using-boot-devtools)
-* [Spring Data JPA](https://docs.spring.io/spring-boot/docs/2.5.4/reference/htmlsingle/#boot-features-jpa-and-spring-data)
-* [Spring Web](https://docs.spring.io/spring-boot/docs/2.5.4/reference/htmlsingle/#boot-features-developing-web-applications)
+| Layer | Before | After | Critical |
+|---|---|---|---|
+| Dependency CVEs | 84 | 7 | 5 → 0 |
+| Container CVEs | 26 | 7 | 2 → 0 |
+| DAST (ZAP) | — | 64 checks passed | 0 failures |
+| Quality Gate | — | Passed | — |
 
-### Guides
-The following guides illustrate how to use some features concretely:
+## Stack
 
-* [Accessing data with MySQL](https://spring.io/guides/gs/accessing-data-mysql/)
-* [Accessing Data with JPA](https://spring.io/guides/gs/accessing-data-jpa/)
-* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
-* [Serving Web Content with Spring MVC](https://spring.io/guides/gs/serving-web-content/)
-* [Building REST services with Spring](https://spring.io/guides/tutorials/bookmarks/)
+| Layer | Tools |
+|---|---|
+| CI/CD | Jenkins |
+| SAST | SonarQube |
+| SCA | OWASP Dependency Check |
+| Container | Docker + Trivy |
+| Secrets | HashiCorp Vault |
+| Kubernetes | Minikube + Kyverno + Network Policies |
+| Runtime | Falco |
+| DAST | OWASP ZAP |
+| Monitoring | Prometheus + Grafana |
 
+## Structure
+
+```
+app/           → Spring Boot source + Dockerfile
+pipeline/      → Jenkinsfile
+kubernetes/    → K8s manifests
+security/      → Kyverno, Falco, Vault, ZAP configs
+monitoring/    → Prometheus + Grafana
+reports/       → Scan results before/after
+docs/          → CVE remediation journey
+
+## Secrets Management
+
+HashiCorp Vault manages all secrets — no credentials in code, images, or manifests.
+
+**How it works:**
+- Vault Agent Injector runs as a sidecar in every pod
+- Secrets are mounted at `/vault/secrets/` at runtime
+- Kubernetes authenticates to Vault via service account tokens
+- TTL: 24h token expiry
+
+**Secrets stored:**
+- `secret/data/docker` — Docker Hub credentials
+- `secret/data/sonar` — SonarQube token
+
+**Policies:**
+- `timesheet-policy` — read access for app pods
+- `k8s-policy` — read access for Kubernetes workloads
+ ## Pipeline Stages
+
+GIT → COMPILE → SONARQUBE → OWASP DC → BUILD → TRIVY → PUSH → DEPLOY → ZAP DAST
+
+## Runtime Security
+
+Falco monitors all containers using default + custom rules:
+
+| Rule | MITRE | Trigger |
+|---|---|---|
+| Shell in container | T1059 | bash/sh spawned in pod |
+| Sensitive file read | T1003 | /etc/shadow access |
+| Unexpected outbound | TA0003 | connection outside port 3306/8200 |
+
+## Policy as Code
+
+Kyverno enforces security at admission time:
+
+| Policy | Mode |
+|---|---|
+| disallow-privileged | Enforce |
+| disallow-root-user | Audit |
+| require-resource-limits | Audit |
+
+## Network
+
+Zero-trust: only `timesheet` → `mysql` communication allowed.
+All other pod-to-pod traffic blocked by Network Policies.
