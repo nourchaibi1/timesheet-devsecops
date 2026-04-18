@@ -1,0 +1,87 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"kyverno.io/v1","kind":"ClusterPolicy","metadata":{"annotations":{},"name":"disallow-privileged"},"spec":{"rules":[{"match":{"resources":{"kinds":["Pod"]}},"name":"check-privileged","validate":{"message":"Privileged containers are not allowed","pattern":{"spec":{"containers":[{"=(securityContext)":{"=(privileged)":false}}]}}}}],"validationFailureAction":"Enforce"}}
+  creationTimestamp: "2026-03-21T22:09:18Z"
+  generation: 1
+  name: disallow-privileged
+  resourceVersion: "204282"
+  uid: ffe880e6-a3aa-435c-836a-c72e8082042c
+spec:
+  admission: true
+  background: true
+  emitWarning: false
+  rules:
+  - match:
+      resources:
+        kinds:
+        - Pod
+    name: check-privileged
+    skipBackgroundRequests: true
+    validate:
+      allowExistingViolations: true
+      message: Privileged containers are not allowed
+      pattern:
+        spec:
+          containers:
+          - =(securityContext):
+              =(privileged): false
+  validationFailureAction: Enforce
+status:
+  autogen:
+    rules:
+    - match:
+        resources:
+          kinds:
+          - DaemonSet
+          - Deployment
+          - Job
+          - ReplicaSet
+          - ReplicationController
+          - StatefulSet
+      name: autogen-check-privileged
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+        message: Privileged containers are not allowed
+        pattern:
+          spec:
+            template:
+              spec:
+                containers:
+                - =(securityContext):
+                    =(privileged): false
+    - match:
+        resources:
+          kinds:
+          - CronJob
+      name: autogen-cronjob-check-privileged
+      skipBackgroundRequests: true
+      validate:
+        allowExistingViolations: true
+        message: Privileged containers are not allowed
+        pattern:
+          spec:
+            jobTemplate:
+              spec:
+                template:
+                  spec:
+                    containers:
+                    - =(securityContext):
+                        =(privileged): false
+  conditions:
+  - lastTransitionTime: "2026-04-18T21:21:55Z"
+    message: Ready
+    reason: Succeeded
+    status: "True"
+    type: Ready
+  rulecount:
+    generate: 0
+    mutate: 0
+    validate: 1
+    verifyimages: 0
+  validatingadmissionpolicy:
+    generated: false
+    message: skip generating ValidatingAdmissionPolicy for non CEL rules.
