@@ -43,9 +43,9 @@ Zero secrets in code, images, or manifests.
 
 | Policy | Mode | Result |
 |---|---|---|
-| disallow-privileged | Enforce | 107 pass |
-| disallow-root-user | Audit | 107 fail , MySQL runs as root by design |
-| require-resource-limits | Audit | 101 pass / 6 fail |
+| disallow-privileged | Enforce | 72 pass |
+| disallow-root-user | Audit | 72 fail ,MySQL runs as root by design |
+| require-resource-limits | Audit | 72 pass |
 
 ## Network Policies
 

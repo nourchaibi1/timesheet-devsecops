@@ -10,3 +10,7 @@ scrape_configs:
     metrics_path: /prometheus
     static_configs:
       - targets: ['host.docker.internal:8080']
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ['pushgateway-prometheus-pushgateway.chap4.svc.cluster.local:9091']
