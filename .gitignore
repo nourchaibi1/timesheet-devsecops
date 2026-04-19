@@ -10,3 +10,4 @@ target/
 docker-compose.yml
 start-vault.sh
 zap_report.html
+.idea/
