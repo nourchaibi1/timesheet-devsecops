@@ -2,4 +2,11 @@ minikube-linux-amd64
 .env
 target/
 .classpath
-.project
+.project.idea/
+.settings/
+.mvn/
+*.jar
+*.class
+docker-compose.yml
+start-vault.sh
+zap_report.html
