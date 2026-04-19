@@ -65,6 +65,8 @@ Zero secrets in code, images, or manifests.
 
 ## Monitoring
 
-Grafana dashboard ;real cluster data:
-- **Runtime Threats** Falco alert rate, security events table
-- **Policy & Compliance**  Kyverno admission results
+Grafana security dashboard - real cluster data:
+
+- **Runtime Threats**  Falco alert rate, security events table
+- **Policy & Compliance** Kyverno admission results
+- **DAST — OWASP ZAP** 64 checks passed, 0 failures, 3 warnings
