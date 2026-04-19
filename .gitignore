@@ -11,3 +11,7 @@ docker-compose.yml
 start-vault.sh
 zap_report.html
 .idea/
+.project
+mvnw
+mvnw.cmd
+monitoring/grafana/banking_cves.db
