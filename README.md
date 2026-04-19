@@ -1,7 +1,8 @@
 # Timesheet DevSecOps Pipeline 
 
-A Spring Boot timesheet app with a full DevSecOps pipeline built
+A Spring Boot timesheet app secured with a full DevSecOps pipeline
 on a local Kubernetes environment (Minikube).
+
 ## Results
 
 | Layer | Before | After | Critical |
@@ -11,6 +12,9 @@ on a local Kubernetes environment (Minikube).
 | DAST (ZAP) | — | 64 checks passed | 0 failures |
 | Quality Gate | — | Passed | — |
 
+## Pipeline
+GIT → COMPILE → SONARQUBE → OWASP DC → BUILD → TRIVY → PUSH → DEPLOY → ZAP DAST
+
 ## Stack
 
 | Layer | Tools |
@@ -19,45 +23,39 @@ on a local Kubernetes environment (Minikube).
 | SAST | SonarQube |
 | SCA | OWASP Dependency Check |
 | Container | Docker + Trivy |
-| Secrets | HashiCorp Vault |
+| Secrets | HashiCorp Vault + Agent Injector |
 | Kubernetes | Minikube + Kyverno + Network Policies |
 | Runtime | Falco |
 | DAST | OWASP ZAP |
 | Monitoring | Prometheus + Grafana |
 
-## Structure
-
-app/           → Spring Boot source + Dockerfile
-pipeline/      → Jenkinsfile
-kubernetes/    → K8s manifests
-security/      → Kyverno, Falco, Vault, ZAP configs
-monitoring/    → Prometheus + Grafana
-reports/       → Scan results before/after
-docs/          → CVE remediation journey
 ## Secrets Management
 
-HashiCorp Vault manages all secrets — no credentials in code, images, or manifests.
+Vault Agent Injector injects secrets at runtime into `/vault/secrets/`.
+Zero secrets in code, images, or manifests.
 
-**How it works:**
-- Vault Agent Injector runs as a sidecar in every pod
-- Secrets are mounted at `/vault/secrets/` at runtime
-- Kubernetes authenticates to Vault via service account tokens
-- TTL: 24h token expiry
+| Secret | Path |
+|---|---|
+| Docker Hub token | `secret/data/docker` |
+| SonarQube token | `secret/data/sonar` |
 
-**Secrets stored:**
-- `secret/data/docker` — Docker Hub credentials
-- `secret/data/sonar` — SonarQube token
+## Policy as Code
 
-**Policies:**
-- `timesheet-policy` — read access for app pods
-- `k8s-policy` — read access for Kubernetes workloads
- ## Pipeline Stages
+| Policy | Mode | Result |
+|---|---|---|
+| disallow-privileged | Enforce | 107 pass |
+| disallow-root-user | Audit | 107 fail , MySQL runs as root by design |
+| require-resource-limits | Audit | 101 pass / 6 fail |
 
-GIT → COMPILE → SONARQUBE → OWASP DC → BUILD → TRIVY → PUSH → DEPLOY → ZAP DAST
+## Network Policies
+
+| Policy | Effect |
+|---|---|
+| allow-timesheet-to-mysql | Only timesheet → MySQL on port 3306 |
+| default-deny-ingress | Block all ingress unless explicitly allowed |
+| deny-mysql-egress | MySQL cannot initiate outbound connections |
 
 ## Runtime Security
-
-Falco monitors all containers using default + custom rules:
 
 | Rule | MITRE | Trigger |
 |---|---|---|
@@ -65,37 +63,8 @@ Falco monitors all containers using default + custom rules:
 | Sensitive file read | T1003 | /etc/shadow access |
 | Unexpected outbound | TA0003 | connection outside port 3306/8200 |
 
-## Policy as Code
+## Monitoring
 
-Kyverno enforces security at admission time:
-
-| Policy | Mode |
-|---|---|
-| disallow-privileged | Enforce |
-| disallow-root-user | Audit |
-| require-resource-limits | Audit |
-
-
- ## Monitoring & Observability
-
-Grafana security dashboard with real data from the cluster:
-
-**Runtime Threats (Falco)**
-- Live threat detection rate over time
-- Security alerts table with timestamps, priority, and rule name
-- Rules triggered: Drop and execute new binary, Contact K8S API Server, Terminal shell in container
-
-**Policy & Compliance (Kyverno)**
-- disallow-privileged → 107 pass
-- disallow-root-user → 107 fail (audit mode — MySQL runs as root)
-- require-resource-limits → 101 pass / 6 fail
- 
- ## Network Policies
-
-Zero-trust networking enforced in namespace `chap4`:
-
-| Policy | Effect |
-|---|---|
-| `allow-timesheet-to-mysql` | Only timesheet → MySQL on port 3306 |
-| `default-deny-ingress` | Block all ingress unless explicitly allowed |
-| `deny-mysql-egress` | MySQL cannot initiate outbound connections |
+Grafana dashboard ;real cluster data:
+- **Runtime Threats** Falco alert rate, security events table
+- **Policy & Compliance**  Kyverno admission results
