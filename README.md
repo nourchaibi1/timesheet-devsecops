@@ -27,7 +27,6 @@ on a local Kubernetes environment (Minikube).
 
 ## Structure
 
-```
 app/           → Spring Boot source + Dockerfile
 pipeline/      → Jenkinsfile
 kubernetes/    → K8s manifests
@@ -35,7 +34,6 @@ security/      → Kyverno, Falco, Vault, ZAP configs
 monitoring/    → Prometheus + Grafana
 reports/       → Scan results before/after
 docs/          → CVE remediation journey
-
 ## Secrets Management
 
 HashiCorp Vault manages all secrets — no credentials in code, images, or manifests.
@@ -77,10 +75,7 @@ Kyverno enforces security at admission time:
 | disallow-root-user | Audit |
 | require-resource-limits | Audit |
 
-## Network
 
-Zero-trust: only `timesheet` → `mysql` communication allowed.
-All other pod-to-pod traffic blocked by Network Policies.
  ## Monitoring & Observability
 
 Grafana security dashboard with real data from the cluster:
@@ -94,3 +89,13 @@ Grafana security dashboard with real data from the cluster:
 - disallow-privileged → 107 pass
 - disallow-root-user → 107 fail (audit mode — MySQL runs as root)
 - require-resource-limits → 101 pass / 6 fail
+ 
+ ## Network Policies
+
+Zero-trust networking enforced in namespace `chap4`:
+
+| Policy | Effect |
+|---|---|
+| `allow-timesheet-to-mysql` | Only timesheet → MySQL on port 3306 |
+| `default-deny-ingress` | Block all ingress unless explicitly allowed |
+| `deny-mysql-egress` | MySQL cannot initiate outbound connections |
